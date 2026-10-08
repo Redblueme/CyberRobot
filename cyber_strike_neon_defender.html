@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Strike: Neon Defender</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Inter', sans-serif;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* CRT Overlay Effect */
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+        /* Neon Glow Effects */
+        .neon-glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.6), inset 0 0 10px rgba(6, 182, 212, 0.4);
+        }
+        .neon-glow-pink {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.6), inset 0 0 10px rgba(236, 72, 153, 0.4);
+        }
+        .neon-text-glow {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(236, 72, 153, 0.6);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #06b6d4;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="relative flex items-center justify-center min-h-screen bg-slate-950 text-white select-none">
+
+    <div id="crtOverlay" class="crt-overlay fixed inset-0 z-40 hidden"></div>
+
+    <div class="relative w-full h-full max-w-4xl max-h-[900px] overflow-hidden sm:rounded-2xl border border-cyan-500/30 bg-black shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col">
+        <canvas id="gameCanvas" class="w-full h-full block bg-black cursor-crosshair"></canvas>
+
+        <!-- In-Game HUD Header -->
+        <div id="hudOverlay" class="absolute top-0 left-0 right-0 p-3 sm:p-4 flex justify-between items-start pointer-events-none z-10 hidden">
+            <!-- Left Stats: HP & Shield & EMP -->
+            <div class="flex flex-col gap-2 min-w-[140px] sm:min-w-[200px]">
+                <!-- HP Bar -->
+                <div>
+                    <div class="flex justify-between text-[10px] sm:text-xs font-orbitron font-bold text-cyan-400 mb-1">
+                        <span>GIÁP THUYỀN (HP)</span>
+                        <span id="hpText">100/100</span>
+                    </div>
+                    <div class="w-full h-2.5 sm:h-3 bg-slate-900/80 rounded-full border border-cyan-500/40 overflow-hidden p-0.5">
+                        <div id="hpBar" class="h-full bg-gradient-to-r from-red-500 via-pink-500 to-cyan-400 rounded-full transition-all duration-200" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- EMP Charge Bar -->
+                <div>
+                    <div class="flex justify-between text-[10px] font-orbitron text-yellow-400">
+                        <span>BOM EMP [SPACE]</span>
+                        <span id="empText">SẴN SÀNG</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-900/80 rounded-full border border-yellow-500/40 overflow-hidden mt-0.5">
+                        <div id="empBar" class="h-full bg-yellow-400 rounded-full transition-all duration-100" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Stats: Score & Wave & Credits -->
+            <div class="text-right flex flex-col items-end">
+                <div class="text-xs sm:text-sm font-orbitron text-slate-400">ĐIỂM SỐ</div>
+                <div id="scoreText" class="text-xl sm:text-3xl font-black font-orbitron text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">0</div>
+                <div class="flex gap-3 text-[10px] sm:text-xs font-orbitron mt-1">
+                    <span class="text-pink-400">WAVE: <strong id="waveText" class="text-white">1</strong></span>
+                    <span class="text-yellow-400">COINS: <span id="coinsText">0</span> 🪙</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Boss Health & Warning Overlay -->
+        <div id="bossHud" class="absolute top-14 left-1/2 -translate-x-1/2 w-11/12 max-w-md pointer-events-none z-10 hidden flex flex-col items-center">
+            <div id="bossWarningText" class="text-xs sm:text-sm font-black font-orbitron text-red-500 animate-pulse tracking-widest mb-1">
+                ⚠️ WARNING: BOSS ASTEROID TITAN IS APPROACHING ⚠️
+            </div>
+            <div class="w-full h-4 bg-slate-900 border-2 border-red-500 rounded-full overflow-hidden p-0.5 shadow-[0_0_20px_rgba(239,68,68,0.8)]">
+                <div id="bossHpBar" class="h-full bg-gradient-to-r from-red-600 via-yellow-500 to-red-400 rounded-full transition-all duration-150" style="width: 100%;"></div>
+            </div>
+            <!-- Boss Speech Bubble -->
+            <div id="bossSpeechBubble" class="mt-2 bg-red-950/90 text-red-200 border border-red-500/60 px-3 py-1 rounded-full text-xs font-bold font-orbitron shadow-lg hidden">
+                "Né thử tia này xem cu! ⚡"
+            </div>
+        </div>
+
+        <!-- Combo Floating Popups Container -->
+        <div id="comboContainer" class="absolute inset-0 pointer-events-none z-20 overflow-hidden"></div>
+
+        <!-- Touch Mobile EMP Action Button -->
+        <button id="empMobileBtn" onclick="window.triggerEmpBomb()" class="absolute bottom-6 right-6 z-30 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 border-2 border-white text-slate-950 font-black font-orbitron text-xs shadow-[0_0_20px_rgba(251,191,36,0.8)] active:scale-90 transition-transform flex flex-col items-center justify-center hidden">
+            <span>BOM</span>
+            <span class="text-[9px]">EMP</span>
+        </button>
+
+        <!-- MAIN MENU OVERLAY -->
+        <div id="mainMenu" class="absolute inset-0 z-30 flex flex-col items-center justify-between p-6 bg-slate-950/90 backdrop-blur-md">
+            
+            <!-- Main Title Banner -->
+            <div class="mt-4 text-center">
+                <h1 class="text-4xl sm:text-6xl font-black italic tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-300 drop-shadow-[0_0_25px_rgba(6,182,212,0.8)] font-orbitron">
+                    CYBER STRIKE
+                </h1>
+                <p class="text-xs sm:text-sm text-cyan-300 tracking-[0.3em] font-bold mt-1 uppercase">
+                    ⚡ NEON DEFENDER - INDIE EDITION ⚡
+                </p>
+                <div class="mt-2 text-[11px] text-slate-400 font-medium italic">
+                    Game làm bằng đam mê & 3 ly Bạc Xỉu ☕
+                </div>
+            </div>
+
+            <!-- Ship Display Preview Card & Easter Egg -->
+            <div class="relative w-36 h-36 mx-auto cursor-pointer group" id="shipPreviewContainer" onclick="window.triggerMenuShipEasterEgg()">
+                <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-cyan-500/20 via-pink-500/20 to-yellow-500/20 blur-xl animate-pulse"></div>
+                <canvas id="menuShipCanvas" width="140" height="140" class="relative z-10 transition-transform duration-300 group-hover:scale-110"></canvas>
+                <!-- Easter Egg Speech Bubble -->
+                <div id="menuShipBubble" class="hidden absolute -top-8 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[10px] font-extrabold px-2.5 py-1 rounded-lg border-2 border-white shadow-lg whitespace-nowrap z-20 animate-bounce">
+                    Bấm cái gì đấy bro?! 🚀
+                </div>
+            </div>
+
+            <!-- Difficulty Selector -->
+            <div class="w-full max-w-sm bg-slate-900/80 p-3 rounded-xl border border-cyan-500/30">
+                <div class="text-center text-xs font-orbitron font-bold text-slate-400 mb-2">CHỌN ĐỘ KHÓ:</div>
+                <div class="grid grid-cols-4 gap-1.5" id="difficultyBtnGroup">
+                    <button onclick="window.setDifficulty('EASY')" id="diffBtnEASY" class="diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-slate-800 text-slate-400 border border-slate-700 hover:border-cyan-400">DỄ</button>
+                    <button onclick="window.setDifficulty('NORMAL')" id="diffBtnNORMAL" class="diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-cyan-500 text-slate-950 font-black border border-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]">VỪA</button>
+                    <button onclick="window.setDifficulty('HARD')" id="diffBtnHARD" class="diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-slate-800 text-slate-400 border border-slate-700 hover:border-pink-400">KHÓ</button>
+                    <button onclick="window.setDifficulty('HELL')" id="diffBtnHELL" class="diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-slate-800 text-slate-400 border border-slate-700 hover:border-red-500">HELL</button>
+                </div>
+                <div id="diffDesc" class="text-center text-[10px] text-cyan-300 mt-2 font-mono">Thử thách chuẩn cho Gamer. Thưởng Coins x1.2</div>
+            </div>
+
+            <!-- Main Menu Buttons -->
+            <div class="flex flex-col gap-3 w-full max-w-xs mb-4">
+                <button onclick="window.startGame()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-pink-500 to-yellow-400 text-slate-950 font-black font-orbitron text-lg tracking-wider neon-glow-cyan active:scale-95 transition-all">
+                    ▶ BẮT ĐẦU CHIẾN
+                </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.openShop()" class="py-2.5 rounded-xl bg-slate-900 border border-pink-500/50 text-pink-400 font-bold font-orbitron text-xs hover:bg-pink-950/40 active:scale-95 transition-all flex items-center justify-center gap-1">
+                        🛒 CỬA HÀNG
+                    </button>
+                    <button onclick="window.toggleCRT()" id="crtToggleBtn" class="py-2.5 rounded-xl bg-slate-900 border border-cyan-500/50 text-cyan-400 font-bold font-orbitron text-xs hover:bg-cyan-950/40 active:scale-95 transition-all">
+                        📺 TV CỔ: OFF
+                    </button>
+                </div>
+            </div>
+
+            <!-- High Score Footer -->
+            <div class="text-xs font-orbitron text-slate-400">
+                KỶ LỤC CỦA BẠN: <strong id="menuHighScore" class="text-yellow-400">0</strong> ĐIỂM
+            </div>
+        </div>
+
+        <!-- SHOP MODAL OVERLAY -->
+        <div id="shopModal" class="absolute inset-0 z-30 flex flex-col p-5 bg-slate-950/95 backdrop-blur-lg hidden">
+            <!-- Shop Header -->
+            <div class="flex justify-between items-center pb-3 border-b border-cyan-500/30">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-black font-orbitron text-cyan-400">SHOP NÂNG CẤP</h2>
+                    <p class="text-[10px] text-slate-400">Đồ xịn đét - Dễ dàng gánh team</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-400 font-orbitron">VÍ COINS</div>
+                    <div class="text-lg font-black font-orbitron text-yellow-400"><span id="shopCoins">0</span> 🪙</div>
+                </div>
+            </div>
+
+            <!-- Shop Tab Content -->
+            <div class="flex-1 overflow-y-auto my-3 space-y-4 pr-1">
+                
+                <!-- Upgrades Section -->
+                <div>
+                    <div class="text-xs font-bold font-orbitron text-pink-400 mb-2 tracking-wider">⚡ NÂNG CẤP CHỈ SỐ</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <!-- Upgrade: HP -->
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-xs text-white">Mặt Dày (Tăng HP)</div>
+                                <div class="text-[10px] text-slate-400" id="shopHpSub">Tăng chịu đòn trâu hơn</div>
+                            </div>
+                            <button onclick="window.buyUpgrade('hp')" id="btnBuyHp" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold font-orbitron text-xs hover:bg-cyan-400 active:scale-95">
+                                50 🪙
+                            </button>
+                        </div>
+                        <!-- Upgrade: Damage -->
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-xs text-white">Tay To (Tăng Sát Thương)</div>
+                                <div class="text-[10px] text-slate-400" id="shopDmgSub">Đạn bắn rát hơn</div>
+                            </div>
+                            <button onclick="window.buyUpgrade('dmg')" id="btnBuyDmg" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold font-orbitron text-xs hover:bg-cyan-400 active:scale-95">
+                                75 🪙
+                            </button>
+                        </div>
+                        <!-- Upgrade: Speed -->
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-xs text-white">Bàn Thờ (Tăng Tốc)</div>
+                                <div class="text-[10px] text-slate-400" id="shopSpeedSub">Lạng lách nhanh hơn</div>
+                            </div>
+                            <button onclick="window.buyUpgrade('speed')" id="btnBuySpeed" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold font-orbitron text-xs hover:bg-cyan-400 active:scale-95">
+                                60 🪙
+                            </button>
+                        </div>
+                        <!-- Upgrade: Fire Rate -->
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-bold text-xs text-white">Cà Phê Phin (Tốc Độ Bắn)</div>
+                                <div class="text-[10px] text-slate-400" id="shopFireSub">Nạp đạn cực nhanh</div>
+                            </div>
+                            <button onclick="window.buyUpgrade('fireRate')" id="btnBuyFireRate" class="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold font-orbitron text-xs hover:bg-cyan-400 active:scale-95">
+                                100 🪙
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ships & Skins Section -->
+                <div>
+                    <div class="text-xs font-bold font-orbitron text-yellow-400 mb-2 tracking-wider">🚀 BỘ BỘT PHI THUYỀN (SKINS)</div>
+                    <div class="grid grid-cols-2 gap-2.5" id="shopShipsGrid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop Close & Reset Data Button -->
+            <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                <button onclick="window.showResetConfirmModal()" class="text-[11px] text-red-400 hover:underline">
+                    🗑 Xóa Dữ Liệu
+                </button>
+                <button onclick="window.closeShop()" class="px-5 py-2 rounded-xl bg-slate-800 text-white font-bold font-orbitron text-xs hover:bg-slate-700">
+                    ĐÓNG
+                </button>
+            </div>
+        </div>
+
+        <!-- Custom Cyberpunk Reset Confirmation Modal -->
+        <div id="resetModal" class="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
+            <div class="w-full max-w-xs bg-slate-900 border border-red-500/60 rounded-xl p-5 text-center shadow-2xl">
+                <div class="text-red-500 text-3xl mb-2">⚠️</div>
+                <h3 class="text-base font-bold font-orbitron text-white mb-2">XÁC NHẬN XÓA DATA?</h3>
+                <p class="text-xs text-slate-400 mb-4">Toàn bộ Highscore, Coins và Nâng cấp sẽ bị xóa sạch về 0!</p>
+                <div class="flex gap-2">
+                    <button onclick="window.confirmResetData()" class="flex-1 py-2 rounded-lg bg-red-600 text-white font-bold font-orbitron text-xs hover:bg-red-500">XÓA LUÔN</button>
+                    <button onclick="window.hideResetConfirmModal()" class="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold font-orbitron text-xs hover:bg-slate-700">HỦY</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAUSE MODAL -->
+        <div id="pauseModal" class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md hidden">
+            <h2 class="text-3xl font-black font-orbitron text-yellow-400 mb-6 tracking-widest">TẠM DỪNG</h2>
+            <div class="flex flex-col gap-3 w-full max-w-xs">
+                <button onclick="window.resumeGame()" class="w-full py-3 rounded-xl bg-cyan-500 text-slate-950 font-black font-orbitron text-sm">TIẾP TỤC BẮN</button>
+                <button onclick="window.restartGame()" class="w-full py-3 rounded-xl bg-slate-800 text-white font-bold font-orbitron text-sm">CHƠI LẠI TỪ ĐẦU</button>
+                <button onclick="window.quitToMenu()" class="w-full py-3 rounded-xl bg-slate-900 text-red-400 border border-red-500/30 font-bold font-orbitron text-sm">VỀ MENU CHÍNH</button>
+            </div>
+        </div>
+
+        <!-- GAME OVER MODAL -->
+        <div id="gameOverModal" class="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 bg-slate-950/90 backdrop-blur-lg hidden">
+            <div class="text-center mb-4">
+                <h2 class="text-4xl font-black font-orbitron text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">THUA TẢ BƠI!</h2>
+                <div id="deathQuoteText" class="text-xs sm:text-sm text-yellow-300 italic font-medium mt-2 px-4">
+                    "Mạng lag tí thôi đúng không bro? 😂"
+                </div>
+            </div>
+
+            <!-- Final Stats Box -->
+            <div class="w-full max-w-xs bg-slate-900/90 border border-red-500/40 rounded-xl p-4 mb-5 space-y-2 text-sm font-orbitron">
+                <div class="flex justify-between text-slate-400">
+                    <span>Điểm trận này:</span>
+                    <strong id="finalScore" class="text-cyan-400">0</strong>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Coins nhặt được:</span>
+                    <strong id="finalCoins" class="text-yellow-400">+0 🪙</strong>
+                </div>
+                <div class="flex justify-between text-slate-400 pt-2 border-t border-slate-800">
+                    <span>Kỷ kỷ lục (Highscore):</span>
+                    <strong id="finalHighScore" class="text-pink-400">0</strong>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 w-full max-w-xs">
+                <button onclick="window.startGame()" class="w-full py-3. rounded-xl bg-gradient-to-r from-cyan-500 to-pink-500 text-slate-950 font-black font-orbitron text-sm active:scale-95">
+                    🔄 PHỤC THÙ NGAY
+                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="window.openShop()" class="py-2.5 rounded-xl bg-slate-800 text-pink-400 font-bold font-orbitron text-xs">🛒 CỬA HÀNG</button>
+                    <button onclick="window.quitToMenu()" class="py-2.5 rounded-xl bg-slate-900 text-slate-300 font-bold font-orbitron text-xs">🏠 MENU</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        
+        // Human-like Funny Dialogues & Gamer Culture Quotes
+        const HUMOR_DEATH_QUOTES = [
+            "Mạng lag tí thôi đúng không bro? 😂",
+            "Do chuột hỏng hay tại tay chưa quen vậy?",
+            "Boss: 'Tưởng thế nào, chưa đủ tuổi!' 🗿",
+            "Game dễ quá nên cố tình thua đúng không?",
+            "Lại ăn thiên thạch rồi, trúng giải đặc biệt!",
+            "Gánh team gãy lưng nhưng team gãy trước...",
+            "Cần bổ sung gấp 100g vitamin 'Né Đạn'!",
+            "Bấm lộn nút hay là hết bình ắc-quy?"
+        ];
+
+        const BOSS_TAUNTS = [
+            "Né thử tia này xem cu! ⚡",
+            "Yếu thế nhờ, né nữa đi!",
+            "Ăn quả Laser này nè! 🔥",
+            "Nhắm thắng nổi ta không?",
+            "Tập trung vào bro ơi!",
+            "Chết chắc rồi con trai!"
+        ];
+
+        const COMBO_POPUP_TEXTS = {
+            combo: ["Xịn đét! 🔥", "Cháy quá bro!", "Tay to vãi! 🦾", "Bá chủ vũ trụ!", "Gánh team!", "Outplay!"],
+            hit: ["Úi đau! 💥", "Tập trung đê!", "Trầy sơn rồi!", "Né ra bro!"],
+            powerup: ["Lên đồ! ⚡", "Sức mạnh tối thượng!", "Cực phê!", "Càn quét thôi!"]
+        };
+
+        // Hit-Stop Micro Freeze Frame Variable
+        let hitStopTimer = 0;
+
+        function triggerHitStop(durationFrames = 3) {
+            hitStopTimer = durationFrames;
+        }
+
+        class WebAudioSystem {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+                this.lowPassFilter = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                    this.lowPassFilter = this.ctx.createBiquadFilter();
+                    this.lowPassFilter.type = "lowpass";
+                    this.lowPassFilter.frequency.value = 20000; // Default full clarity
+                    this.lowPassFilter.connect(this.ctx.destination);
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            setMuffled(isMuffled) {
+                if (!this.ctx || !this.lowPassFilter) return;
+                this.lowPassFilter.frequency.setTargetAtTime(isMuffled ? 400 : 20000, this.ctx.currentTime, 0.1);
+            }
+
+            playLaser(pitchMultiplier = 1.0) {
+                if (this.isMuted) return;
+                this.init();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const randomPitch = (0.92 + Math.random() * 0.16) * pitchMultiplier;
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880 * randomPitch, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110 * randomPitch, this.ctx.currentTime + 0.12);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+
+                osc.connect(gain);
+                gain.connect(this.lowPassFilter);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+
+            playExplosion(sizeMultiplier = 1.0) {
+                if (this.isMuted) return;
+                this.init();
+
+                const bufferSize = this.ctx.sampleRate * 0.3 * sizeMultiplier;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000 / sizeMultiplier, this.ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.3 * sizeMultiplier);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3 * sizeMultiplier);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.lowPassFilter);
+
+                noise.start();
+            }
+
+            playPowerup() {
+                if (this.isMuted) return;
+                this.init();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.25);
+
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.lowPassFilter);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playBossLaser() {
+                if (this.isMuted) return;
+                this.init();
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.5);
+
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.lowPassFilter);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+        }
+
+        const soundSystem = new WebAudioSystem();
+        window.soundSystem = soundSystem;
+
+        const DIFFICULTY_SETTINGS = {
+            EASY: { name: "DỄ", hpMult: 1.5, dmgTakenMult: 0.7, asteroidSpeedMult: 0.75, spawnRateMult: 1.3, rewardMult: 1.0, desc: "Cho anh em giải trí thư giãn nhẹ nhàng." },
+            NORMAL: { name: "VỪA", hpMult: 1.0, dmgTakenMult: 1.0, asteroidSpeedMult: 1.0, spawnRateMult: 1.0, rewardMult: 1.2, desc: "Thử thách chuẩn cho Gamer. Thưởng Coins x1.2" },
+            HARD: { name: "KHÓ", hpMult: 0.75, dmgTakenMult: 1.4, asteroidSpeedMult: 1.25, spawnRateMult: 0.8, rewardMult: 1.6, desc: "Đạn bay ngập màn hình! Thưởng Coins x1.6" },
+            HELL: { name: "CYBER HELL", hpMult: 0.5, dmgTakenMult: 2.0, asteroidSpeedMult: 1.5, spawnRateMult: 0.6, rewardMult: 2.5, desc: "Chỉ dành cho cao thủ 'Tay To'! Thưởng Coins x2.5" }
+        };
+
+        let currentDifficultyKey = 'NORMAL';
+
+        // Easter Egg on Menu Ship Click
+        window.triggerMenuShipEasterEgg = function() {
+            const bubble = document.getElementById('menuShipBubble');
+            if (!bubble) return;
+
+            const eggQuotes = [
+                "Bấm cái gì đấy bro?! 🚀",
+                "Đừng chọc nữa, vào bắn đi!",
+                "Sơn vừa khô đấy nha!",
+                "Đủ đạn chưa mà bấm?",
+                "Sẵn sàng gánh team chưa?!"
+            ];
+            bubble.innerText = eggQuotes[Math.floor(Math.random() * eggQuotes.length)];
+            bubble.classList.remove('hidden');
+
+            soundSystem.playLaser(1.3);
+
+            setTimeout(() => {
+                bubble.classList.add('hidden');
+            }, 2000);
+        };
+
+        window.setDifficulty = function(key) {
+            currentDifficultyKey = key;
+            const diffBtns = document.querySelectorAll('.diff-btn');
+            diffBtns.forEach(btn => {
+                btn.className = "diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-slate-800 text-slate-400 border border-slate-700 hover:border-cyan-400";
+            });
+
+            const activeBtn = document.getElementById('diffBtn' + key);
+            if (activeBtn) {
+                if (key === 'EASY') activeBtn.className = "diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-green-500 text-slate-950 font-black border border-green-300 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+                if (key === 'NORMAL') activeBtn.className = "diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-cyan-500 text-slate-950 font-black border border-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]";
+                if (key === 'HARD') activeBtn.className = "diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-pink-500 text-slate-950 font-black border border-pink-300 shadow-[0_0_10px_rgba(236,72,153,0.5)]";
+                if (key === 'HELL') activeBtn.className = "diff-btn py-1.5 rounded text-[11px] font-bold font-orbitron bg-red-600 text-white font-black border border-red-300 shadow-[0_0_12px_rgba(239,68,68,0.8)]";
+            }
+
+            const descEl = document.getElementById('diffDesc');
+            if (descEl) descEl.innerText = DIFFICULTY_SETTINGS[key].desc;
+        };
+
+        const SHIPS_DATA = [
+            { id: 'default', name: 'Tàu Mặc Định', price: 0, color: '#06b6d4', desc: 'Sơn xanh Neon trẻ trung.' },
+            { id: 'helmet', name: 'Nón Bảo Hiểm 35k', price: 100, color: '#eab308', desc: 'Bảo hộ chuẩn quốc gia, chống trầy xước.' },
+            { id: 'xeom', name: 'Xe Ôm 3000', price: 250, color: '#22c55e', desc: 'Chạy KPI cực nhanh, né đạn lẹ.' },
+            { id: 'coffee', name: 'Chiến Hạm Cà Phê', price: 500, color: '#ec4899', desc: 'Nạp đầy caffeine, đậm đà uy lực.' }
+        ];
+
+        let gameState = {
+            highscore: 0,
+            credits: 0,
+            upgrades: {
+                hp: 0,
+                dmg: 0,
+                speed: 0,
+                fireRate: 0
+            },
+            activeSkin: 'default',
+            unlockedSkins: ['default']
+        };
+
+        function loadSavedData() {
+            try {
+                const saved = localStorage.getItem('cyber_strike_save');
+                if (saved) {
+                    gameState = { ...gameState, ...JSON.parse(saved) };
+                }
+            } catch (e) {
+                console.error("Could not load save data", e);
+            }
+            updateMenuUI();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('cyber_strike_save', JSON.stringify(gameState));
+            } catch (e) {
+                console.error("Could not save data", e);
+            }
+            updateMenuUI();
+        }
+
+        function updateMenuUI() {
+            const menuHs = document.getElementById('menuHighScore');
+            if (menuHs) menuHs.innerText = gameState.highscore;
+            const shopCoins = document.getElementById('shopCoins');
+            if (shopCoins) shopCoins.innerText = gameState.credits;
+            renderShopShips();
+        }
+
+        window.openShop = function() {
+            updateMenuUI();
+            document.getElementById('shopModal').classList.remove('hidden');
+        };
+
+        window.closeShop = function() {
+            document.getElementById('shopModal').classList.add('hidden');
+        };
+
+        window.showResetConfirmModal = function() {
+            document.getElementById('resetModal').classList.remove('hidden');
+        };
+
+        window.hideResetConfirmModal = function() {
+            document.getElementById('resetModal').classList.add('hidden');
+        };
+
+        window.confirmResetData = function() {
+            localStorage.removeItem('cyber_strike_save');
+            gameState = {
+                highscore: 0,
+                credits: 0,
+                upgrades: { hp: 0, dmg: 0, speed: 0, fireRate: 0 },
+                activeSkin: 'default',
+                unlockedSkins: ['default']
+            };
+            window.hideResetConfirmModal();
+            updateMenuUI();
+        };
+
+        window.buyUpgrade = function(type) {
+            const currentLvl = gameState.upgrades[type] || 0;
+            if (currentLvl >= 5) return;
+
+            const costs = { hp: 50, dmg: 75, speed: 60, fireRate: 100 };
+            const cost = costs[type] * (currentLvl + 1);
+
+            if (gameState.credits >= cost) {
+                gameState.credits -= cost;
+                gameState.upgrades[type] = currentLvl + 1;
+                saveData();
+            }
+        };
+
+        function renderShopShips() {
+            const grid = document.getElementById('shopShipsGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            SHIPS_DATA.forEach(ship => {
+                const isUnlocked = gameState.unlockedSkins.includes(ship.id);
+                const isActive = gameState.activeSkin === ship.id;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border flex flex-col justify-between ${isActive ? 'bg-cyan-950/60 border-cyan-400' : 'bg-slate-900 border-slate-800'}`;
+                
+                let btnHtml = '';
+                if (isActive) {
+                    btnHtml = `<span class="text-[10px] font-bold font-orbitron text-cyan-400">ĐANG DÙNG</span>`;
+                } else if (isUnlocked) {
+                    btnHtml = `<button onclick="window.equipSkin('${ship.id}')" class="px-2 py-1 rounded bg-slate-800 text-white font-bold text-[10px] hover:bg-slate-700">CHỌN</button>`;
+                } else {
+                    btnHtml = `<button onclick="window.buySkin('${ship.id}', ${ship.price})" class="px-2 py-1 rounded bg-yellow-500 text-slate-950 font-bold text-[10px] hover:bg-yellow-400">${ship.price} 🪙</button>`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-3 h-3 rounded-full" style="background-color: ${ship.color}"></span>
+                            <div class="font-bold text-xs text-white">${ship.name}</div>
+                        </div>
+                        <div class="text-[9px] text-slate-400 mb-2">${ship.desc}</div>
+                    </div>
+                    <div class="flex justify-end items-center">${btnHtml}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.buySkin = function(id, price) {
+            if (gameState.credits >= price && !gameState.unlockedSkins.includes(id)) {
+                gameState.credits -= price;
+                gameState.unlockedSkins.push(id);
+                gameState.activeSkin = id;
+                saveData();
+                renderMenuShipPreview();
+            }
+        };
+
+        window.equipSkin = function(id) {
+            if (gameState.unlockedSkins.includes(id)) {
+                gameState.activeSkin = id;
+                saveData();
+                renderMenuShipPreview();
+            }
+        };
+
+        window.toggleCRT = function() {
+            const overlay = document.getElementById('crtOverlay');
+            const btn = document.getElementById('crtToggleBtn');
+            if (overlay.classList.contains('hidden')) {
+                overlay.classList.remove('hidden');
+                btn.innerText = "📺 TV CỔ: ON";
+            } else {
+                overlay.classList.add('hidden');
+                btn.innerText = "📺 TV CỔ: OFF";
+            }
+        };
+
+        function renderMenuShipPreview() {
+            const canvas = document.getElementById('menuShipCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const shipObj = SHIPS_DATA.find(s => s.id === gameState.activeSkin) || SHIPS_DATA[0];
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Draw glowing ship preview
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = shipObj.color;
+
+            ctx.fillStyle = shipObj.color;
+            ctx.beginPath();
+            ctx.moveTo(0, -30);
+            ctx.lineTo(25, 25);
+            ctx.lineTo(0, 15);
+            ctx.lineTo(-25, 25);
+            ctx.closePath();
+            ctx.fill();
+
+            // Cockpit
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let isRunning = false;
+        let isPaused = false;
+        let score = 0;
+        let coinsEarnedThisRun = 0;
+        let wave = 1;
+        let empCharge = 100;
+        let activeKeys = {};
+
+        // Touch & Drag Controls
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 45;
+                this.x = canvas.width / 2;
+                this.y = canvas.height - 100;
+                
+                const diff = DIFFICULTY_SETTINGS[currentDifficultyKey];
+                const hpUp = gameState.upgrades.hp || 0;
+                this.maxHp = Math.round((100 + hpUp * 20) * diff.hpMult);
+                this.hp = this.maxHp;
+
+                const speedUp = gameState.upgrades.speed || 0;
+                this.speed = 6 + speedUp * 1.2;
+
+                const fireUp = gameState.upgrades.fireRate || 0;
+                this.fireCooldown = Math.max(8, 18 - fireUp * 2);
+                this.fireTimer = 0;
+
+                this.shield = 0;
+                this.spreadPowerTimer = 0;
+                this.skinColor = (SHIPS_DATA.find(s => s.id === gameState.activeSkin) || SHIPS_DATA[0]).color;
+            }
+
+            update() {
+                // Keyboard Fallback Movement
+                if (activeKeys['ArrowLeft'] || activeKeys['a']) this.x -= this.speed;
+                if (activeKeys['ArrowRight'] || activeKeys['d']) this.x += this.speed;
+                if (activeKeys['ArrowUp'] || activeKeys['w']) this.y -= this.speed;
+                if (activeKeys['ArrowDown'] || activeKeys['s']) this.y += this.speed;
+
+                // Screen Boundaries
+                this.x = Math.max(this.width / 2, Math.min(canvas.width - this.width / 2, this.x));
+                this.y = Math.max(this.height / 2, Math.min(canvas.height - this.height / 2, this.y));
+
+                // Auto Shooting
+                this.fireTimer++;
+                if (this.fireTimer >= this.fireCooldown) {
+                    this.fireTimer = 0;
+                    this.shoot();
+                }
+
+                if (this.spreadPowerTimer > 0) this.spreadPowerTimer--;
+            }
+
+            shoot() {
+                soundSystem.playLaser();
+                const dmgUp = gameState.upgrades.dmg || 0;
+                const baseDmg = 15 + dmgUp * 5;
+
+                if (this.spreadPowerTimer > 0) {
+                    // Spread Fire
+                    bullets.push(new Bullet(this.x, this.y - 20, 0, -12, baseDmg));
+                    bullets.push(new Bullet(this.x - 10, this.y - 15, -3, -11, baseDmg));
+                    bullets.push(new Bullet(this.x + 10, this.y - 15, 3, -11, baseDmg));
+                } else {
+                    // Normal Twin Fire
+                    bullets.push(new Bullet(this.x - 12, this.y - 15, 0, -12, baseDmg));
+                    bullets.push(new Bullet(this.x + 12, this.y - 15, 0, -12, baseDmg));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Shield Effect
+                if (this.shield > 0) {
+                    ctx.strokeStyle = '#06b6d4';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#06b6d4';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 32, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Thruster Flame
+                ctx.fillStyle = Math.random() > 0.5 ? '#f59e0b' : '#ef4444';
+                ctx.beginPath();
+                ctx.moveTo(-8, 18);
+                ctx.lineTo(0, 32 + Math.random() * 8);
+                ctx.lineTo(8, 18);
+                ctx.closePath();
+                ctx.fill();
+
+                // Ship Body
+                ctx.fillStyle = this.skinColor;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.skinColor;
+                ctx.beginPath();
+                ctx.moveTo(0, -22);
+                ctx.lineTo(20, 18);
+                ctx.lineTo(0, 10);
+                ctx.lineTo(-20, 18);
+                ctx.closePath();
+                ctx.fill();
+
+                // Cockpit Core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(0, -4, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, vx, vy, damage) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.damage = damage;
+                this.radius = 3;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = '#06b6d4';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#06b6d4';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Asteroid {
+            constructor(x, y, size = 3) {
+                this.x = x || Math.random() * (canvas.width - 60) + 30;
+                this.y = y || -40;
+                this.size = size; // 3: Large, 2: Medium, 1: Small
+                this.radius = size === 3 ? 35 : (size === 2 ? 22 : 12);
+                
+                const diff = DIFFICULTY_SETTINGS[currentDifficultyKey];
+                this.speedY = (Math.random() * 1.5 + 1.2) * diff.asteroidSpeedMult;
+                this.speedX = (Math.random() - 0.5) * 1.2;
+
+                this.hp = size * 25;
+                this.maxHp = this.hp;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.04;
+
+                // Procedural Angular Rock Shape Vertices
+                this.numPoints = Math.floor(Math.random() * 4) + 7;
+                this.offsetAngles = [];
+                for (let i = 0; i < this.numPoints; i++) {
+                    this.offsetAngles.push(0.7 + Math.random() * 0.6);
+                }
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.rotation += this.rotSpeed;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                ctx.strokeStyle = '#ec4899';
+                ctx.fillStyle = '#1e1b4b';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#ec4899';
+
+                ctx.beginPath();
+                for (let i = 0; i < this.numPoints; i++) {
+                    const angle = (i / this.numPoints) * Math.PI * 2;
+                    const r = this.radius * this.offsetAngles[i];
+                    const px = Math.cos(angle) * r;
+                    const py = Math.sin(angle) * r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Energy Crack Lines inside rock
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-this.radius * 0.3, -this.radius * 0.2);
+                ctx.lineTo(0, 0);
+                ctx.lineTo(this.radius * 0.4, this.radius * 0.3);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Boss {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = -120;
+                this.targetY = 110;
+                this.radius = 70;
+                this.maxHp = 1000 + wave * 400;
+                this.hp = this.maxHp;
+                this.vx = 2;
+
+                // Boss Laser Beam Attack State
+                this.laserState = 'IDLE'; // IDLE, CHARGING, FIRING
+                this.laserTimer = 0;
+                this.laserAngle = Math.PI / 2; // Straight down
+                this.tauntTimer = 0;
+            }
+
+            update() {
+                // Entrance Movement
+                if (this.y < this.targetY) {
+                    this.y += 2;
+                    return;
+                }
+
+                // Horizontal Oscillation
+                this.x += this.vx;
+                if (this.x - this.radius < 20 || this.x + this.radius > canvas.width - 20) {
+                    this.vx *= -1;
+                }
+
+                // Laser Attack Cycle
+                this.laserTimer++;
+                if (this.laserState === 'IDLE' && this.laserTimer > 200) {
+                    this.laserState = 'CHARGING';
+                    this.laserTimer = 0;
+                    this.triggerTaunt();
+                } else if (this.laserState === 'CHARGING' && this.laserTimer > 70) {
+                    this.laserState = 'FIRING';
+                    this.laserTimer = 0;
+                    soundSystem.playBossLaser();
+                } else if (this.laserState === 'FIRING' && this.laserTimer > 90) {
+                    this.laserState = 'IDLE';
+                    this.laserTimer = 0;
+                }
+            }
+
+            triggerTaunt() {
+                const bubble = document.getElementById('bossSpeechBubble');
+                if (!bubble) return;
+                const quote = BOSS_TAUNTS[Math.floor(Math.random() * BOSS_TAUNTS.length)];
+                bubble.innerText = `Boss: "${quote}"`;
+                bubble.classList.remove('hidden');
+
+                setTimeout(() => {
+                    bubble.classList.add('hidden');
+                }, 2500);
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Boss Core Body
+                ctx.fillStyle = '#020617';
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = '#ef4444';
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Inner Glowing Red Core Eye
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+
+                // Render Sweeping Laser Beam
+                if (this.laserState === 'CHARGING') {
+                    // Warning Line
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 8]);
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x, canvas.height);
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (this.laserState === 'FIRING') {
+                    // Giant Neon Laser Beam Attack
+                    ctx.save();
+                    ctx.shadowBlur = 30;
+                    ctx.shadowColor = '#ef4444';
+
+                    // Outer Laser Glow
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+                    ctx.fillRect(this.x - 30, this.y + 40, 60, canvas.height);
+
+                    // Inner High-Energy Core Beam
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(this.x - 12, this.y + 40, 24, canvas.height);
+
+                    ctx.restore();
+
+                    // Laser Collision Check against Player
+                    if (player && Math.abs(player.x - this.x) < 35 && player.y > this.y) {
+                        const diff = DIFFICULTY_SETTINGS[currentDifficultyKey];
+                        const dmg = Math.round(2 * diff.dmgTakenMult);
+                        if (player.shield > 0) {
+                            player.shield -= dmg;
+                        } else {
+                            player.hp -= dmg;
+                        }
+                        triggerHitStop(2);
+                        spawnComboText("Úi đau! 💥", player.x, player.y - 20, '#ef4444');
+                    }
+                }
+            }
+        }
+
+        class Powerup {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type; // 'spread', 'shield', 'emp'
+                this.radius = 12;
+                this.speedY = 2;
+            }
+
+            update() {
+                this.y += this.speedY;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                let color = '#38bdf8';
+                let symbol = '⚡';
+                if (this.type === 'shield') { color = '#06b6d4'; symbol = '🛡️'; }
+                if (this.type === 'emp') { color = '#f59e0b'; symbol = '💣'; }
+
+                ctx.fillStyle = color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = color;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#000000';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(symbol, 0, 0);
+
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.04 + 0.02;
+                this.size = Math.random() * 4 + 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createExplosion(x, y, color = '#ec4899', count = 15) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function spawnComboText(text, x, y, color = '#06b6d4') {
+            const container = document.getElementById('comboContainer');
+            if (!container) return;
+
+            const el = document.createElement('div');
+            el.className = 'absolute font-black font-orbitron text-xs sm:text-sm animate-bounce pointer-events-none drop-shadow-md';
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.color = color;
+            el.innerText = text;
+
+            container.appendChild(el);
+            setTimeout(() => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 800);
+        }
+
+        let player = null;
+        let bullets = [];
+        let asteroids = [];
+        let powerups = [];
+        let particles = [];
+        let boss = null;
+
+        // Input Setup - Touch Direct Dragging
+        canvas.addEventListener('touchstart', (e) => {
+            if (!isRunning || isPaused || !player) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+
+            isDragging = true;
+            dragOffset.x = touchX - player.x;
+            dragOffset.y = touchY - player.y;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (!isDragging || !player) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            player.x = touch.clientX - rect.left - dragOffset.x;
+            player.y = touch.clientY - rect.top - dragOffset.y;
+        });
+
+        canvas.addEventListener('touchend', () => { isDragging = false; });
+
+        // Mouse Drag Setup
+        canvas.addEventListener('mousedown', (e) => {
+            if (!isRunning || isPaused || !player) return;
+            const rect = canvas.getBoundingClientRect();
+            isDragging = true;
+            dragOffset.x = (e.clientX - rect.left) - player.x;
+            dragOffset.y = (e.clientY - rect.top) - player.y;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging || !player) return;
+            const rect = canvas.getBoundingClientRect();
+            player.x = (e.clientX - rect.left) - dragOffset.x;
+            player.y = (e.clientY - rect.top) - dragOffset.y;
+        });
+
+        canvas.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+            activeKeys[e.key] = true;
+            if (e.code === 'Space') window.triggerEmpBomb();
+            if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+                if (isRunning) window.pauseGame();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            activeKeys[e.key] = false;
+        });
+
+        window.triggerEmpBomb = function() {
+            if (!isRunning || isPaused || empCharge < 100) return;
+            empCharge = 0;
+            soundSystem.playExplosion(2.0);
+
+            // Destroy all non-boss asteroids
+            asteroids.forEach(ast => {
+                createExplosion(ast.x, ast.y, '#f59e0b', 12);
+                score += 10;
+            });
+            asteroids = [];
+
+            if (boss) {
+                boss.hp -= 150;
+            }
+
+            spawnComboText("💣 BOOM! BOM EMP!", canvas.width / 2 - 50, canvas.height / 2, '#f59e0b');
+        };
+
+        let asteroidSpawnTimer = 0;
+
+        function gameLoop() {
+            if (!isRunning) return;
+
+            if (!isPaused) {
+                // Micro Hit-Stop Freeze
+                if (hitStopTimer > 0) {
+                    hitStopTimer--;
+                    requestAnimationFrame(gameLoop);
+                    return;
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Update EMP Charge
+                if (empCharge < 100) empCharge += 0.2;
+
+                // Player Update & Draw
+                if (player) {
+                    player.update();
+                    player.draw();
+                }
+
+                // Asteroid Spawning
+                const diff = DIFFICULTY_SETTINGS[currentDifficultyKey];
+                asteroidSpawnTimer++;
+                if (!boss && asteroidSpawnTimer > (60 * diff.spawnRateMult)) {
+                    asteroidSpawnTimer = 0;
+                    asteroids.push(new Asteroid());
+                }
+
+                // Boss Spawn Logic
+                if (score > wave * 500 && !boss) {
+                    boss = new Boss();
+                    document.getElementById('bossHud').classList.remove('hidden');
+                }
+
+                // Boss Update & Draw
+                if (boss) {
+                    boss.update();
+                    boss.draw();
+
+                    // Update Boss HP Bar
+                    const bossHpPercent = Math.max(0, (boss.hp / boss.maxHp) * 100);
+                    document.getElementById('bossHpBar').style.width = `${bossHpPercent}%`;
+
+                    // Boss Defeated
+                    if (boss.hp <= 0) {
+                        createExplosion(boss.x, boss.y, '#ef4444', 40);
+                        soundSystem.playExplosion(3.0);
+                        score += 500;
+                        coinsEarnedThisRun += Math.round(50 * diff.rewardMult);
+                        boss = null;
+                        wave++;
+                        document.getElementById('bossHud').classList.add('hidden');
+                        spawnComboText("VICTORY! WAVE UP!", canvas.width / 2 - 60, canvas.height / 2, '#22c55e');
+                    }
+                }
+
+                // Bullets Loop
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const b = bullets[i];
+                    b.update();
+                    b.draw();
+
+                    // Bullet vs Asteroid Collision
+                    let bulletHit = false;
+                    for (let j = asteroids.length - 1; j >= 0; j--) {
+                        const ast = asteroids[j];
+                        const dist = Math.hypot(b.x - ast.x, b.y - ast.y);
+                        if (dist < ast.radius + b.radius) {
+                            ast.hp -= b.damage;
+                            createExplosion(b.x, b.y, '#06b6d4', 4);
+                            bulletHit = true;
+
+                            if (ast.hp <= 0) {
+                                soundSystem.playExplosion();
+                                score += ast.size * 10;
+                                coinsEarnedThisRun += Math.round(ast.size * diff.rewardMult);
+                                createExplosion(ast.x, ast.y, '#ec4899', 15);
+
+                                // Drop Powerups Chance
+                                if (Math.random() < 0.15) {
+                                    const types = ['spread', 'shield', 'emp'];
+                                    powerups.push(new Powerup(ast.x, ast.y, types[Math.floor(Math.random() * types.length)]));
+                                }
+
+                                // Fracture Asteroid
+                                if (ast.size > 1) {
+                                    asteroids.push(new Asteroid(ast.x - 10, ast.y, ast.size - 1));
+                                    asteroids.push(new Asteroid(ast.x + 10, ast.y, ast.size - 1));
+                                }
+
+                                asteroids.splice(j, 1);
+                                const quote = COMBO_POPUP_TEXTS.combo[Math.floor(Math.random() * COMBO_POPUP_TEXTS.combo.length)];
+                                spawnComboText(quote, ast.x, ast.y);
+                            }
+                            break;
+                        }
+                    }
+
+                    // Bullet vs Boss Collision
+                    if (!bulletHit && boss) {
+                        const dist = Math.hypot(b.x - boss.x, b.y - boss.y);
+                        if (dist < boss.radius + b.radius) {
+                            boss.hp -= b.damage;
+                            createExplosion(b.x, b.y, '#ef4444', 5);
+                            bulletHit = true;
+                        }
+                    }
+
+                    if (bulletHit || b.y < -20) {
+                        bullets.splice(i, 1);
+                    }
+                }
+
+                // Asteroids Loop & Collision with Player
+                for (let i = asteroids.length - 1; i >= 0; i--) {
+                    const ast = asteroids[i];
+                    ast.update();
+                    ast.draw();
+
+                    // Collision with Player
+                    if (player) {
+                        const dist = Math.hypot(player.x - ast.x, player.y - ast.y);
+                        if (dist < player.width / 2 + ast.radius) {
+                            const dmg = Math.round(20 * diff.dmgTakenMult);
+                            if (player.shield > 0) {
+                                player.shield -= dmg;
+                            } else {
+                                player.hp -= dmg;
+                            }
+
+                            triggerHitStop(3);
+                            createExplosion(player.x, player.y, '#ef4444', 12);
+                            soundSystem.playExplosion();
+                            asteroids.splice(i, 1);
+
+                            const hitQuote = COMBO_POPUP_TEXTS.hit[Math.floor(Math.random() * COMBO_POPUP_TEXTS.hit.length)];
+                            spawnComboText(hitQuote, player.x, player.y - 20, '#ef4444');
+                        }
+                    }
+
+                    if (ast.y > canvas.height + 50) {
+                        asteroids.splice(i, 1);
+                    }
+                }
+
+                // Powerups Loop
+                for (let i = powerups.length - 1; i >= 0; i--) {
+                    const p = powerups[i];
+                    p.update();
+                    p.draw();
+
+                    if (player) {
+                        const dist = Math.hypot(player.x - p.x, player.y - p.y);
+                        if (dist < player.width / 2 + p.radius) {
+                            soundSystem.playPowerup();
+                            if (p.type === 'spread') player.spreadPowerTimer = 300;
+                            if (p.type === 'shield') player.shield = 100;
+                            if (p.type === 'emp') empCharge = 100;
+
+                            const pQuote = COMBO_POPUP_TEXTS.powerup[Math.floor(Math.random() * COMBO_POPUP_TEXTS.powerup.length)];
+                            spawnComboText(pQuote, player.x, player.y - 20, '#38bdf8');
+                            powerups.splice(i, 1);
+                            continue;
+                        }
+                    }
+
+                    if (p.y > canvas.height + 30) powerups.splice(i, 1);
+                }
+
+                // Particles Loop
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const pt = particles[i];
+                    pt.update();
+                    pt.draw();
+                    if (pt.life <= 0) particles.splice(i, 1);
+                }
+
+                // Check Game Over
+                if (player && player.hp <= 0) {
+                    gameOver();
+                }
+
+                // Update HUD Text Elements
+                updateHUD();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateHUD() {
+            if (!player) return;
+            const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+            document.getElementById('hpBar').style.width = `${hpPercent}%`;
+            document.getElementById('hpText').innerText = `${Math.max(0, player.hp)}/${player.maxHp}`;
+
+            document.getElementById('empBar').style.width = `${Math.min(100, empCharge)}%`;
+            document.getElementById('empText').innerText = empCharge >= 100 ? 'SẴN SÀNG' : `${Math.floor(empCharge)}%`;
+
+            document.getElementById('scoreText').innerText = score;
+            document.getElementById('waveText').innerText = wave;
+            document.getElementById('coinsText').innerText = coinsEarnedThisRun;
+        }
+
+        window.startGame = function() {
+            soundSystem.init();
+            score = 0;
+            coinsEarnedThisRun = 0;
+            wave = 1;
+            empCharge = 100;
+            bullets = [];
+            asteroids = [];
+            powerups = [];
+            particles = [];
+            boss = null;
+
+            player = new Player();
+
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('hudOverlay').classList.remove('hidden');
+            document.getElementById('empMobileBtn').classList.remove('hidden');
+
+            isRunning = true;
+            isPaused = false;
+            gameLoop();
+        };
+
+        window.pauseGame = function() {
+            if (!isRunning) return;
+            isPaused = true;
+            soundSystem.setMuffled(true);
+            document.getElementById('pauseModal').classList.remove('hidden');
+        };
+
+        window.resumeGame = function() {
+            isPaused = false;
+            soundSystem.setMuffled(false);
+            document.getElementById('pauseModal').classList.add('hidden');
+        };
+
+        window.restartGame = function() {
+            window.startGame();
+        };
+
+        window.quitToMenu = function() {
+            isRunning = false;
+            isPaused = false;
+            soundSystem.setMuffled(false);
+            document.getElementById('hudOverlay').classList.add('hidden');
+            document.getElementById('empMobileBtn').classList.add('hidden');
+            document.getElementById('bossHud').classList.add('hidden');
+            document.getElementById('pauseModal').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            updateMenuUI();
+        };
+
+        function gameOver() {
+            isRunning = false;
+            soundSystem.playExplosion(2.5);
+
+            // Update local save
+            gameState.credits += coinsEarnedThisRun;
+            if (score > gameState.highscore) {
+                gameState.highscore = score;
+            }
+            saveData();
+
+            // Random Humor Quote
+            const quote = HUMOR_DEATH_QUOTES[Math.floor(Math.random() * HUMOR_DEATH_QUOTES.length)];
+            document.getElementById('deathQuoteText').innerText = `"${quote}"`;
+
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('finalCoins').innerText = `+${coinsEarnedThisRun} 🪙`;
+            document.getElementById('finalHighScore').innerText = gameState.highscore;
+
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        // Initialize on DOM load
+        window.onload = function() {
+            loadSavedData();
+            renderMenuShipPreview();
+            window.setDifficulty('NORMAL');
+        };
+    </script>
+</body>
+</html>
